@@ -1,2 +1,2 @@
-# project-documentation
+# insightroom-documentation
 Репозиторий для ведения проектной документации. Предполагает использование аналитиками и PM.
