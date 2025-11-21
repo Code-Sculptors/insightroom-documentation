@@ -121,16 +121,16 @@ sequenceDiagram
     U->>F: Заполняет форму регистрации
     F->>F: Валидация формы
     F->>B: POST /api/register
-    B->>D: Проверка уникальности email
-    alt Email уже занят
+    B->>D: Проверка уникальности пользователя
+    alt Пользователь существет
         D-->>B: Email занят
-        B-->>F: HTTP 409 - Conflict
+        B-->>F: HTTP 500 - Internal Server Error
         F-->>U: Ошибка "Email уже используется"
-    else Email свободен
+    else Пользователь не существет
         D-->>B: Email свободен
         B->>D: Сохранение пользователя
         D-->>B: Успешное сохранение
-        B-->>F: HTTP 201 - Created
+        B-->>F: access и refresh токены
         F-->>U: Успешная регистрация
     end
 ```
@@ -148,12 +148,12 @@ sequenceDiagram
     B->>D: Поиск пользователя
     alt Пользователь не найден
         D-->>B: Пользователь не существует
-        B-->>F: HTTP 404 - Not Found
+        B-->>F: HTTP 500 - Internal Server Error
         F-->>U: Ошибка "Неверный email или пароль"
     else Неверный пароль
         D-->>B: Данные пользователя
         B->>B: Проверка пароля
-        B-->>F: HTTP 401 - Unauthorized
+        B-->>F: HTTP 500 - Internal Server Error
         F-->>U: Ошибка "Неверный email или пароль"
     else Успешный вход
         D-->>B: Данные пользователя
@@ -172,16 +172,19 @@ sequenceDiagram
     participant P as Участник
     participant F as Frontend
     participant B as Backend
+    participant D as База данных
     participant W as WebRTC сервер
-    
+   
+
     %% Создание комнаты
     O->>F: Создает конференцию
     F->>B: POST /api/rooms
     alt Ошибка авторизации
-        B-->>F: 401 Unauthorized
+        B-->>F:HTTP 500 - Internal Server Error
         F-->>O: "Требуется вход в систему"
     else Успех
-	    B->>B: Генерация ID комнаты
+	    B-->>D: Сохранение комнаты
+	    B->>B: Генерация URL комнаты
         B-->>F: Данные комнаты
         F-->>O: Ссылка приглашения
     end
@@ -190,7 +193,7 @@ sequenceDiagram
     P->>F: Переходит по ссылке
     F->>B: GET /api/rooms/{id}
     alt Комната не существует
-        B-->>F: 404 Not Found
+        B-->>F: HTTP 500 - Internal Server Error
         F-->>P: "Комната не найдена"
     else Успех
         B-->>F: Данные комнаты
@@ -267,29 +270,7 @@ sequenceDiagram
 
 ##### 6. Добавление  пользователя в контакты
 
-```mermaid
-sequenceDiagram
-    participant U1 as Пользователь 1
-    participant F1 as Frontend U1
-    participant B as Backend
-    participant DB as База данных
 
-    U1->>F1: Нажимает "Добавить в контакты" 
-    F1->>B: POST /api/contacts/add
-    B->>DB: Проверка существования контакта
-    DB-->>B: Результат проверки
-    B->>B: Создание запроса на добавление
-    B->>F1: Push-уведомление о добавлении контакта
-    F1-->>U1: Отображение нового контакта в списке контактов
-    
-
-     U1->>F1: Открывает список контактов
-    F1->>B: GET /api/contacts
-    B->>DB: Получение списка контактов
-    DB-->>B: Данные контактов
-    B-->>F1: Список контактов
-    F1-->>U1: Отображение контактов
-```
 ```mermaid
 sequenceDiagram
     participant U as Пользователь
@@ -303,19 +284,19 @@ sequenceDiagram
     B->>DB: Проверка существования пользователя
     alt Пользователь не найден
         DB-->>B: Пользователь не существует
-        B-->>F: 404 - Not Found
+        B-->>F: HTTP 500 - Internal Server Error
         F-->>U: "Пользователь не существует"
     else Пользователь найден
         B->>DB: Проверка существования контакта
         alt Контакт уже есть
             DB-->>B: Контакт существует
-            B-->>F: 409 - Conflict
+            B-->>F: HTTP 500 - Internal Server Error
             F-->>U: "Контакт уже добавлен"
         else Можно добавить
             DB-->>B: Можно добавить
             B->>DB: Создание записи контакта
             DB-->>B: Успешное сохранение
-            B-->>F: 201 - Created
+            B-->>F: HTTP 201 - Created
             F-->>U: "Контакт добавлен"
         end
     end
